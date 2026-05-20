@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+
+  localstack:
+    image: localstack/localstack-pro:latest
+    container_name: localstack
+
+    ports:
+      - "4566:4566"
+      - "4510-4559:4510-4559"
+
+    environment:
+      - LOCALSTACK_AUTH_TOKEN=${LOCALSTACK_AUTH_TOKEN}
+      - DEBUG=1
+      - PERSISTENCE=1
+      - AWS_DEFAULT_REGION=us-east-1
+      - EDGE_PORT=4566
+
+      # Simulated AWS Services
+      - SERVICES=ec2,s3,iam,sts,lambda,cloudwatch,secretsmanager
+
+      # Docker support
+      - DOCKER_HOST=unix:///var/run/docker.sock
+
+    volumes:
+      - "./localstack-data:/var/lib/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+
+    networks:
+      - lan1
+
+  kali:
+    image: kasmweb/kali-rolling-desktop:1.18.0
+    container_name: kali
+
+    privileged: true
+    user: root
+
+    environment:
+      VNC_PW: password
+
+    ports:
+      - "6901:6901"
+
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+
+    volumes:
+      - "./docker-share:/shared"
+      - "./terraform:/terraform"
+
+    tty: true
+    stdin_open: true
+
+    networks:
+      - lan1
+
+networks:
+  lan1:
+    driver: bridge

@@ -23,30 +23,39 @@ jobs:
 
       - name: Start LocalStack
         run: |
-          docker run -d             --name localstack             -p 4566:4566             -e SERVICES=s3,ec2,iam,sts             -e DEBUG=1             localstack/localstack:latest
+          docker run -d             --name localstack             -p 4566:4566             -e DEBUG=1             localstack/localstack:latest
+
+      - name: Check LocalStack Status
+        run: |
+          echo "=== Docker Containers ==="
+          docker ps -a
+
+          echo "=== LocalStack Logs ==="
+          docker logs localstack || true
+
+          echo "=== Port Mapping ==="
+          docker port localstack || true
 
       - name: Wait for LocalStack
         run: |
-          echo "Waiting for LocalStack..."
-
-          for i in {1..60}; do
-            if curl -s ${LOCALSTACK_ENDPOINT}/_localstack/health >/dev/null; then
-              echo "LocalStack is responding"
-              break
+          for i in {1..20}; do
+            if curl -s ${LOCALSTACK_ENDPOINT}/_localstack/health > /dev/null; then
+              echo "LocalStack Ready"
+              exit 0
             fi
 
-            echo "Waiting..."
+            echo "Attempt $i"
+            docker ps -a
             sleep 5
           done
+
+          echo "=== FINAL LOGS ==="
+          docker logs localstack || true
+          exit 1
 
       - name: Show LocalStack Health
         run: |
           curl ${LOCALSTACK_ENDPOINT}/_localstack/health
-
-      - name: Show LocalStack Logs
-        run: |
-          docker ps
-          docker logs localstack
 
       - name: Terraform Init
         working-directory: terraform
@@ -68,4 +77,4 @@ jobs:
         if: failure()
         run: |
           docker ps -a
-          docker logs localstack
+          docker logs localstack || true

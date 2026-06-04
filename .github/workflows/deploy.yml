@@ -52,6 +52,15 @@ jobs:
         working-directory: terraform
         run: terraform validate
 
+      - name: Run Trivy Security Scan (Report Only)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          severity: 'LOW,MEDIUM,HIGH,CRITICAL'
+          exit-code: '0'
+
       - name: Terraform Plan
         working-directory: terraform
         run: terraform plan

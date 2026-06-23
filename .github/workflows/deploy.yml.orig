@@ -1,0 +1,55 @@
+name: SecurityPlus LocalStack CI/CD
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  terraform-localstack:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Start Free LocalStack with Docker
+        run: |
+          docker run -d \
+            --name localstack \
+            -p 4566:4566 \
+            -e SERVICES=ec2,s3,iam,sts \
+            -e DEBUG=1 \
+            localstack/localstack:3.8.1
+
+      - name: Wait for LocalStack
+        run: |
+          for i in {1..40}; do
+            if curl -s http://localhost:4566/_localstack/health; then
+              echo "LocalStack is ready"
+              exit 0
+            fi
+            echo "Waiting for LocalStack..."
+            sleep 3
+          done
+          echo "LocalStack failed to start"
+          docker logs localstack
+          exit 1
+
+      - name: Terraform Init
+        working-directory: terraform
+        run: terraform init
+
+      - name: Terraform Validate
+        working-directory: terraform
+        run: terraform validate
+
+      - name: Terraform Apply
+        working-directory: terraform
+        run: terraform apply -auto-approve

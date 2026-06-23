@@ -1,0 +1,67 @@
+name: Deploy Security+ Cloud Lab
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  terraform-localstack:
+    runs-on: ubuntu-latest
+
+    env:
+      LOCALSTACK_ENDPOINT: http://127.0.0.1:4566
+      TF_VAR_localstack_endpoint: http://127.0.0.1:4566
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set Up Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Start LocalStack
+        run: |
+          docker run -d             --name localstack             -p 4566:4566             -e DEBUG=1             localstack/localstack:3.8
+
+      - name: Check LocalStack Status
+        run: |
+          docker ps -a
+          docker logs localstack || true
+          docker port localstack || true
+
+      - name: Wait for LocalStack
+        run: |
+          for i in {1..30}; do
+            if curl -s ${LOCALSTACK_ENDPOINT}/_localstack/health > /dev/null; then
+              echo "LocalStack Ready"
+              exit 0
+            fi
+            sleep 5
+          done
+
+          docker logs localstack || true
+          exit 1
+
+      - name: Terraform Init
+        working-directory: terraform
+        run: terraform init
+
+      - name: Terraform Validate
+        working-directory: terraform
+        run: terraform validate
+
+      - name: Terraform Plan
+        working-directory: terraform
+        run: terraform plan
+
+      - name: Terraform Apply
+        working-directory: terraform
+        run: terraform apply -auto-approve
+
+      - name: Show LocalStack Logs on Failure
+        if: failure()
+        run: |
+          docker ps -a
+          docker logs localstack || true

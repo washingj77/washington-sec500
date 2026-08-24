@@ -10,7 +10,7 @@ terraform {
 variable "localstack_endpoint" {
   description = "LocalStack endpoint URL"
   type        = string
-  default     = "http://localhost:7788"
+  default     = "http://localhost:4566"
 }
 
 provider "aws" {
